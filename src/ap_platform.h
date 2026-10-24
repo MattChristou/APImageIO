@@ -8,7 +8,7 @@
  *   ap_is_dir / ap_is_file          UTF-8 path tests (LightWave paths are UTF-8)
  *   ap_temp_dir                     per-user temp folder, no trailing separator
  *   ap_mutex_*                      a plain non-recursive lock
- *   _strdup / _stricmp              the MSVC names, mapped to POSIX off Windows
+ *   _strdup / _stricmp / _strnicmp  the MSVC names, mapped to POSIX off Windows
  */
 #ifndef AP_PLATFORM_H
 #define AP_PLATFORM_H
@@ -94,6 +94,9 @@ typedef pthread_mutex_t ap_mutex;
 #endif
 #ifndef _stricmp
 #define _stricmp strcasecmp
+#endif
+#ifndef _strnicmp
+#define _strnicmp strncasecmp
 #endif
 
 #endif /* _WIN32 */
