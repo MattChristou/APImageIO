@@ -30,7 +30,7 @@ FLAGS="-O2 -mmacosx-version-min=11.0 -I$SRC -I$INST/include -I$INST/include/Open
     done
     # shellcheck disable=SC2086
     clang++ -mmacosx-version-min=11.0 -o build/qa_harness build/obj/*.o "$INST"/lib/*.a \
-        -framework CoreFoundation -framework Security -liconv -lz || exit 92
+        -framework CoreFoundation -framework Security -liconv -lz -lcompression || exit 92
 } > build/build.log 2>&1 || { cat build/build.log; exit 92; }
 
 # OpenEXR prints its own diagnostics for the deliberately corrupt file.

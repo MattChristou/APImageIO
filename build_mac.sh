@@ -74,7 +74,7 @@ build_arch() {
     # shellcheck disable=SC2086
     clang++ -arch "$arch" $MIN -bundle -o "$obj/$NAME" $objs "$inst"/lib/*.a \
         -framework CoreFoundation -framework CoreServices -framework Security \
-        -liconv -lz \
+        -liconv -lz -lcompression \
         -Wl,-exported_symbol,__mod_descrip -Wl,-dead_strip
 }
 
