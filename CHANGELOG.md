@@ -4,6 +4,21 @@ All notable changes to APImageIO are recorded here.
 
 ## [Unreleased]
 
+### Added
+- **macOS build (in progress, `mac-port` branch).** `build_mac.sh` makes a universal
+  (arm64 + x86_64) `APImageIO.plugin` against static vcpkg dependencies pinned to the
+  same baseline as the Windows build (`mac/vcpkg.json`, `mac/triplets/`, macOS 11+).
+  Only `_mod_descrip` is exported, so the bundled OIIO/OCIO/OpenEXR stay private.
+  CI (`.github/workflows/build.yml`) builds it, dlopens it, and runs the regression
+  harness (`tests/run_tests.sh`). Not yet tested in LightWave on a Mac.
+
+### Changed
+- OS services go through `src/ap_platform.h` (path tests, temp folder, mutex,
+  separators). Folder-form output paths join with `/` on macOS; Cryptomatte's
+  last-resort output folder is `$TMPDIR` there.
+- The LightWave SDK headers (`sdk/include`) and `apprefs` (`third_party/apprefs`,
+  from AP_Shared) are vendored, so a clean checkout builds without sibling folders.
+
 ## [0.4.0-beta.1] - 2026-10-12
 
 First beta-tester package (`make_dist.ps1` → `dist\APImageIO_0.4.0-beta.1.zip`).

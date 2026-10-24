@@ -16,6 +16,7 @@
  * APImageIO commands, e.g. by the Render Pass Manager per pass). If no
  * multilayer output path is set, the filter is inert.
  */
+#include "ap_platform.h"   /* _strdup off Windows */
 #include <lwserver.h>
 #include <lwfilter.h>
 #include <lwrender.h>      /* LWSceneInfo: scene name for folder-style output */

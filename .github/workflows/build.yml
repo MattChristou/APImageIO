@@ -1,0 +1,78 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  macos:
+    runs-on: macos-15            # Apple Silicon; x86_64 deps are cross-built
+    timeout-minutes: 360         # the first, uncached dependency build is long
+    env:
+      VCPKG_COMMIT: a0b1c8d3a477c1cb4813d8e127a56961707ca42b   # = mac/vcpkg.json builtin-baseline
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-cache
+      VCPKG_INSTALLED: ${{ github.workspace }}/build/vcpkg
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tools for the dependency builds
+        run: brew install nasm autoconf automake autoconf-archive libtool pkg-config
+
+      - name: vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$RUNNER_TEMP/vcpkg"
+          git -C "$RUNNER_TEMP/vcpkg" checkout "$VCPKG_COMMIT"
+          "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+          echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+          mkdir -p "$VCPKG_DEFAULT_BINARY_CACHE"
+
+      # restore/save split so a FAILED run still keeps every package it did
+      # build -- an all-or-nothing cache would throw away hours of OIIO work
+      - name: Restore dependency cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ env.VCPKG_COMMIT }}-${{ hashFiles('mac/vcpkg.json', 'mac/triplets/*') }}-${{ github.run_id }}
+          restore-keys: |
+            vcpkg-${{ env.VCPKG_COMMIT }}-${{ hashFiles('mac/vcpkg.json', 'mac/triplets/*') }}-
+            vcpkg-${{ env.VCPKG_COMMIT }}-
+
+      - name: Dependencies (arm64)
+        run: |
+          "$VCPKG_ROOT/vcpkg" install --x-manifest-root=mac --overlay-triplets=mac/triplets \
+            --triplet arm64-osx-lw --host-triplet arm64-osx --x-install-root="$VCPKG_INSTALLED/arm64" \
+            || { find "$VCPKG_ROOT/buildtrees" -name '*-err.log' -newer mac/vcpkg.json -exec sh -c 'echo "=== $1"; tail -40 "$1"' sh {} \; ; exit 1; }
+
+      - name: Dependencies (x86_64)
+        run: |
+          "$VCPKG_ROOT/vcpkg" install --x-manifest-root=mac --overlay-triplets=mac/triplets \
+            --triplet x64-osx-lw --host-triplet arm64-osx --x-install-root="$VCPKG_INSTALLED/x64" \
+            || { find "$VCPKG_ROOT/buildtrees" -name '*-err.log' -newer mac/vcpkg.json -exec sh -c 'echo "=== $1"; tail -40 "$1"' sh {} \; ; exit 1; }
+
+      - name: Save dependency cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ env.VCPKG_COMMIT }}-${{ hashFiles('mac/vcpkg.json', 'mac/triplets/*') }}-${{ github.run_id }}
+
+      - name: OIIO formats actually compiled in (arm64)
+        run: |
+          for f in "$VCPKG_INSTALLED"/arm64/arm64-osx-lw/lib/libOpenImageIO.a; do
+            nm "$f" 2>/dev/null | grep -oE '[a-z0-9]+_input_imageio_create' | sort -u | tr '\n' ' '; echo
+          done
+
+      - name: Build plugin (universal arm64/x86_64)
+        run: sh build_mac.sh
+
+      - name: Regression harness
+        run: |
+          python3 -m venv "$RUNNER_TEMP/py"
+          "$RUNNER_TEMP/py/bin/pip" install --quiet OpenEXR numpy pypng
+          PATH="$RUNNER_TEMP/py/bin:$PATH" sh tests/run_tests.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: APImageIO-mac
+          path: build/mac/APImageIO-mac.zip

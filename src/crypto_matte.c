@@ -28,7 +28,7 @@
 #include <lwrender.h>
 #include <lwsurf.h>
 #include <lwgeneric.h>
-#include <windows.h>          /* CRITICAL_SECTION: evaluate() is called on many render threads */
+#include "ap_platform.h"     /* ap_mutex: evaluate() is called on many render threads */
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -66,7 +66,7 @@ static int          g_tables_built = 0;
 
 /* evaluate() runs on multiple render threads; this guards the shared accumulator
  * (and one-time setup). Set up in the activation function. */
-static CRITICAL_SECTION g_lock;
+static ap_mutex         g_lock;
 static int              g_lock_init = 0;
 
 /* dedup helper: array of names already added to a manifest */
@@ -193,13 +193,13 @@ static void cm_rend_cleanup(LWInstance inst)
 { (void)inst;
   int i;
   if (!g_lock_init) return;
-  EnterCriticalSection(&g_lock);
+  ap_mutex_lock(&g_lock);
   cm_free_tables();
   for (i = 0; i < CM_MAXTHREADS; ++i)
       if (g_accum[i]) { cm_accum_free(g_accum[i]); g_accum[i] = NULL; }
   free(g_shared_total); g_shared_total = NULL;
   g_frame_w = g_frame_h = 0;
-  LeaveCriticalSection(&g_lock); }
+  ap_mutex_unlock(&g_lock); }
 
 /* preprocess: the pre-render, single-threaded hook (NOT called for pixel filters
  * in this LW build -- setup happens in create()/evaluate() instead). Kept for
@@ -208,13 +208,13 @@ static void cm_pf_preprocess(LWInstance inst, LWPreprocessAccess *ppa,
                              LWRenderGlobals *rg, LWRenderState *rs, LWRenderStateID *rsid)
 {
     (void)inst; (void)ppa; (void)rs; (void)rsid;
-    if (!g_lock_init) { InitializeCriticalSection(&g_lock); g_lock_init = 1; }
-    EnterCriticalSection(&g_lock);
+    if (!g_lock_init) { ap_mutex_init(&g_lock); g_lock_init = 1; }
+    ap_mutex_lock(&g_lock);
     cm_build_tables();
     if (rg && rg->frameWidth > 0 && rg->frameHeight > 0) {
         g_frame_w = (int)rg->frameWidth; g_frame_h = (int)rg->frameHeight;
     }
-    LeaveCriticalSection(&g_lock);
+    ap_mutex_unlock(&g_lock);
 }
 
 static LWCStringUTF8 CM_PF_FLAGS[] = { LWBUFFER_SURFACE_ID, 0 };
@@ -242,7 +242,7 @@ static void cm_pf_evaluate(LWInstance inst, const LWPixelAccess *pa)
     /* preprocess isn't called for pixel filters here -> lazily build tables and
      * this thread's accumulator on first use (double-checked, locked). */
     if (!g_accum[ti]) {
-        EnterCriticalSection(&g_lock);
+        ap_mutex_lock(&g_lock);
         if (!g_tables_built) cm_build_tables();
         if (g_frame_w == 0 && ray && ray->renderGlobals &&
             ray->renderGlobals->frameWidth > 0 && ray->renderGlobals->frameHeight > 0) {
@@ -253,7 +253,7 @@ static void cm_pf_evaluate(LWInstance inst, const LWPixelAccess *pa)
             g_shared_total = (unsigned int *)calloc((size_t)g_frame_w * g_frame_h, sizeof(unsigned int));
         if (!g_accum[ti] && g_frame_w > 0 && g_shared_total)
             g_accum[ti] = cm_accum_create_shared(g_frame_w, g_frame_h, CM_NTYPES, CM_NRANKS, g_shared_total);
-        LeaveCriticalSection(&g_lock);
+        ap_mutex_unlock(&g_lock);
     }
     acc = g_accum[ti];
     if (!acc) return;
@@ -275,7 +275,7 @@ static void cm_pf_evaluate(LWInstance inst, const LWPixelAccess *pa)
 static LWInstance cm_pf_create(void *p, void *c, LWError *e)
 {
     (void)p; (void)c; (void)e;
-    if (!g_lock_init) { InitializeCriticalSection(&g_lock); g_lock_init = 1; }
+    if (!g_lock_init) { ap_mutex_init(&g_lock); g_lock_init = 1; }
     /* Deliberately NOT building the surface table here: create() runs when the
      * filter is added (or the scene loads), and anything edited after that --
      * objects added, surfaces renamed, another scene loaded -- would render
@@ -293,7 +293,7 @@ CryptoMatte(int version, GlobalFunc *global, void *vlocal, void *serverData)
     (void)serverData;
     if (version != LWPIXELFILTER_VERSION) return AFUNC_BADVERSION;
     g_cm_global = global;
-    if (!g_lock_init) { InitializeCriticalSection(&g_lock); g_lock_init = 1; }
+    if (!g_lock_init) { ap_mutex_init(&g_lock); g_lock_init = 1; }
     local->inst->create  = cm_pf_create;
     local->inst->destroy = cm_pf_destroy;
     local->inst->copy    = cm_pf_copy;
@@ -329,10 +329,10 @@ int cm_crypto_produce(int w, int h, CMCryptoData *out)
     if (!out || w <= 0 || h <= 0 || !g_lock_init) return 0;
     memset(out, 0, sizeof *out);
 
-    EnterCriticalSection(&g_lock);
+    ap_mutex_lock(&g_lock);
     for (i = 0; i < CM_MAXTHREADS; ++i)
         if (g_accum[i]) { if (!acc) acc = g_accum[i]; else cm_accum_merge(acc, g_accum[i]); }
-    if (!acc) { LeaveCriticalSection(&g_lock); return 0; }
+    if (!acc) { ap_mutex_unlock(&g_lock); return 0; }
     cm_accum_finalize(acc);
 
     /* per type: 3 preview RGB channels + CM_LEVELS*4 ranked (id,coverage) channels */
@@ -410,7 +410,7 @@ consume:
     free(g_shared_total); g_shared_total = NULL;
     g_frame_w = g_frame_h = 0;
     cm_free_tables();      /* manifests were copied into attrV above; rebuilt next frame */
-    LeaveCriticalSection(&g_lock);
+    ap_mutex_unlock(&g_lock);
     return out->nchan > 0;
 }
 
@@ -449,15 +449,12 @@ static LWError cm_if_process(LWInstance inst, const LWFilterAccess *fa)
 
     /* Path: session command > the "Multilayer/Cryptomatte Output Path" pref
      * (the only route a user can set by hand - LayoutGeneric commands take no
-     * typed argument) > %TEMP%\ap_cryptomatte_, so the filter still works when
+     * typed argument) > <temp>/ap_cryptomatte_, so the filter still works when
      * just added. Own mode appends ".cryptomatte.exr", so sharing the base with
      * the multilayer file ("<base>NNNN.exr") does not collide. */
     if (!base || !base[0]) base = prefs.ml_output;
     if (!base || !base[0]) {
-        const char *tmp = getenv("TEMP");
-        if (!tmp || !tmp[0]) tmp = getenv("TMP");
-        if (!tmp || !tmp[0]) tmp = "C:\\tmp";
-        snprintf(defbase, sizeof defbase, "%s\\ap_cryptomatte_", tmp);
+        snprintf(defbase, sizeof defbase, "%s" AP_PATH_SEP_STR "ap_cryptomatte_", ap_temp_dir());
         base = defbase;
     }
     w = fa->width; h = fa->height;

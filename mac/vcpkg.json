@@ -1,0 +1,17 @@
+{
+  "name": "apimageio-mac",
+  "version-string": "0",
+  "description": "APImageIO macOS dependency set (mirrors the Windows x64-windows-static install)",
+  "builtin-baseline": "a0b1c8d3a477c1cb4813d8e127a56961707ca42b",
+  "dependencies": [
+    "openexr",
+    "imath",
+    "libwebp",
+    { "name": "libavif", "features": ["dav1d", "aom"] },
+    "libyuv",
+    "lunasvg",
+    "lodepng",
+    "minizip-ng",
+    { "name": "openimageio", "features": ["libraw", "openjpeg", "jpegxl"] }
+  ]
+}

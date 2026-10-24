@@ -281,7 +281,10 @@ void Shutdown(void *serverData)
     (void)serverData;
 }
 
-__declspec(dllexport) ModuleDescriptor _mod_descrip = {
+#ifdef _WIN32
+__declspec(dllexport)
+#endif
+ModuleDescriptor _mod_descrip = {
     MOD_SYSSYNC,
     MOD_SYSVER,
     MOD_MACHINE,

@@ -6,8 +6,12 @@
      - crypto_encode: Cryptomatte metadata key
    Test files come from mk_kra.py / mk_exr.py (run_tests.bat runs them).
    Exit code = number of failed checks. */
+#ifdef _WIN32
 #include <windows.h>
 #include <psapi.h>
+#else
+#include <mach/mach.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +21,7 @@
 #include "krabridge.h"
 #include "crypto_encode.h"
 #include "exr_session.h"
+#include "ap_platform.h"   /* AP_PATH_SEP */
 
 #define D(f) "data/" f
 
@@ -88,9 +93,16 @@ static int load(const char *f, ExrImage *im, char *err)
 }
 static size_t private_bytes(void)
 {
+#ifdef _WIN32
     PROCESS_MEMORY_COUNTERS_EX pmc;
     GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS *)&pmc, sizeof pmc);
     return pmc.PrivateUsage;
+#else
+    task_vm_info_data_t vi;                        /* physical footprint = the */
+    mach_msg_type_number_t n = TASK_VM_INFO_COUNT;  /* Activity Monitor number  */
+    if (task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)&vi, &n) != KERN_SUCCESS) return 0;
+    return (size_t)vi.phys_footprint;
+#endif
 }
 
 int main(void)
@@ -203,21 +215,26 @@ int main(void)
 
     printf("[OUTPUT] folder / prefix resolution\n");
     {
-        char out[1024];
-        struct { const char *in, *scene, *want, *what; } c[] = {
-            { "data",              "C:\\proj\\Scenes\\Shot010.lws", "data\\Shot010_",       "existing folder -> <folder>\\<scene>_" },
-            { "Z:\\no\\such\\",    "Shot010.lws",                   "Z:\\no\\such\\Shot010_", "trailing slash = folder even if missing" },
-            { "Z:\\renders/",      "a/b/Shot.v2.lws",               "Z:\\renders\\Shot.v2_", "mixed slashes, dotted name keeps all but extension" },
-            { "data\\",            "",                              "data\\render_",        "no scene name -> render_" },
-            { "data",              "Untitled",                      "data\\Untitled_",      "scene without extension" },
-            { "data",              "bad|name?.lws",                 "data\\bad_name__",     "unsafe filename chars replaced" },
-            { "C:\\out\\shot_",    "Shot010.lws",                   "C:\\out\\shot_",       "prefix form unchanged (Render Pass Manager)" },
-            { "C:\\out\\cm.EXR",   "Shot010.lws",                   "C:\\out\\cm",          "prefix form still drops .exr" },
+        char out[1024], want[1024];
+        /* Folder form joins with the platform separator (AP_PATH_SEP); both
+           separators are still accepted when parsing, on either platform. A
+           NULL dir means the prefix form, where 'stem' is the whole answer. */
+        struct { const char *in, *scene, *dir, *stem, *what; } c[] = {
+            { "data",              "C:\\proj\\Scenes\\Shot010.lws", "data",        "Shot010_",       "existing folder -> <folder>/<scene>_" },
+            { "Z:\\no\\such\\",    "Shot010.lws",                   "Z:\\no\\such", "Shot010_",       "trailing slash = folder even if missing" },
+            { "Z:\\renders/",      "a/b/Shot.v2.lws",               "Z:\\renders",  "Shot.v2_",       "mixed slashes, dotted name keeps all but extension" },
+            { "data\\",            "",                              "data",        "render_",        "no scene name -> render_" },
+            { "data",              "Untitled",                      "data",        "Untitled_",      "scene without extension" },
+            { "data",              "bad|name?.lws",                 "data",        "bad_name__",     "unsafe filename chars replaced" },
+            { "C:\\out\\shot_",    "Shot010.lws",                   NULL,          "C:\\out\\shot_", "prefix form unchanged (Render Pass Manager)" },
+            { "C:\\out\\cm.EXR",   "Shot010.lws",                   NULL,          "C:\\out\\cm",    "prefix form still drops .exr" },
         };
         int i;
         for (i = 0; i < (int)(sizeof c / sizeof c[0]); ++i) {
+            if (c[i].dir) snprintf(want, sizeof want, "%s%c%s", c[i].dir, AP_PATH_SEP, c[i].stem);
+            else          snprintf(want, sizeof want, "%s", c[i].stem);
             ap_exr_resolve_base(c[i].in, c[i].scene, out, sizeof out);
-            CHECK(strcmp(out, c[i].want) == 0, "%-48s '%s'", c[i].what, out);
+            CHECK(strcmp(out, want) == 0, "%-48s '%s'", c[i].what, out);
         }
     }
 

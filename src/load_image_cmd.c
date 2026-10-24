@@ -25,7 +25,7 @@
 #include <lwgeneric.h>
 #include <lwimage.h>
 #include <lwdialog.h>
-#include <windows.h>
+#include "ap_platform.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -109,14 +109,7 @@ static int li_same_path(const char *a, const char *b)
     return *a == *b;
 }
 
-static int li_exists(const char *path)
-{
-    wchar_t w[LI_PATHLEN];
-    DWORD attr;
-    if (!MultiByteToWideChar(CP_UTF8, 0, path, -1, w, LI_PATHLEN)) return 0;  /* LW paths are UTF-8 */
-    attr = GetFileAttributesW(w);
-    return attr != INVALID_FILE_ATTRIBUTES && !(attr & FILE_ATTRIBUTE_DIRECTORY);
-}
+static int li_exists(const char *path) { return ap_is_file(path); }   /* LW paths are UTF-8 */
 
 typedef enum { LI_LOADED, LI_ALREADY, LI_MISSING, LI_FAILED_EXPLAINED, LI_FAILED } LiResult;
 

@@ -8,3 +8,5 @@ tests/data/big*.exr
 *.pdb
 *.obj
 *.exe
+build/
+.vcpkg-cache/

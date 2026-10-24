@@ -2,18 +2,9 @@
  * exr_session.c - shared per-render EXR session state (see exr_session.h).
  */
 #include "exr_session.h"
-#include <windows.h>
+#include "ap_platform.h"
 #include <stdio.h>
 #include <string.h>
-
-static int is_dir_utf8(const char *path)
-{
-    wchar_t w[1024];
-    DWORD a;
-    if (!path || !path[0] || !MultiByteToWideChar(CP_UTF8, 0, path, -1, w, 1024)) return 0;
-    a = GetFileAttributesW(w);
-    return a != INVALID_FILE_ATTRIBUTES && (a & FILE_ATTRIBUTE_DIRECTORY);
-}
 
 void ap_exr_resolve_base(const char *in, const char *scene_name, char *out, size_t cap)
 {
@@ -24,7 +15,7 @@ void ap_exr_resolve_base(const char *in, const char *scene_name, char *out, size
     if (!out || cap == 0) return;
     if (!in) in = "";
     n = strlen(in);
-    if (!(n && (in[n - 1] == '\\' || in[n - 1] == '/')) && !is_dir_utf8(in)) {
+    if (!(n && (in[n - 1] == '\\' || in[n - 1] == '/')) && !ap_is_dir(in)) {
         ap_exr_strip_exr_ext(in, out, cap);              /* filename-prefix form */
         return;
     }
@@ -43,7 +34,7 @@ void ap_exr_resolve_base(const char *in, const char *scene_name, char *out, size
         if (strchr("<>\"|?*", stem[i]) || (unsigned char)stem[i] < 32) stem[i] = '_';
     if (!stem[0]) strcpy(stem, "render");
 
-    snprintf(out, cap, "%s\\%s_", dir, stem);
+    snprintf(out, cap, "%s" AP_PATH_SEP_STR "%s_", dir, stem);
 }
 
 static char g_compression[32]   = "";

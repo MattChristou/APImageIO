@@ -1,0 +1,2 @@
+apprefs.c / apprefs.h vendored from AP_Shared (https://github.com/MattChristou/AP_Shared)
+commit 5f2fbda, path apprefs/. Edit upstream, then re-copy here.
