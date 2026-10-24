@@ -281,8 +281,13 @@ void Shutdown(void *serverData)
     (void)serverData;
 }
 
+/* The one symbol LightWave looks up. On macOS everything is built with
+ * -fvisibility=hidden (so the bundled OIIO/OCIO/OpenEXR stay private), and a
+ * hidden symbol can't be exported even by -exported_symbol: make it default. */
 #ifdef _WIN32
 __declspec(dllexport)
+#else
+__attribute__((visibility("default")))
 #endif
 ModuleDescriptor _mod_descrip = {
     MOD_SYSSYNC,
