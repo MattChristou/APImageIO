@@ -1,0 +1,10 @@
+bin/
+obj/
+dist/
+tests/build/
+tests/data/big*.exr
+.vs/
+*.vcxproj.user
+*.pdb
+*.obj
+*.exe

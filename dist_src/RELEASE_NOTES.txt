@@ -1,0 +1,54 @@
+APIMAGEIO 0.4.0-beta.1 - RELEASE NOTES
+=======================================
+
+First beta.
+
+What's in it
+------------
+- Loaders: OpenEXR (DWAA/DWAB, multilayer, cropped/overscan, luminance-only),
+  WebP, AVIF (incl. 10/12-bit HDR), SVG, 16-bit PNG, Krita .kra and
+  OpenRaster .ora, plus TIFF, DPX, Cineon, PSD, HDR, JPEG 2000, JPEG XL, DDS,
+  camera RAW and more through OpenImageIO.
+- Savers: WebP and AVIF (lossless and lossy), OpenEXR with selectable
+  compression, TIFF 16-bit/float, DPX, Radiance HDR, FITS, Maya IFF, PNM,
+  ICO, Zfile.
+- Multilayer OpenEXR image filter: every render buffer in one EXR per frame,
+  colour buffers optionally half float, data buffers always 32-bit.
+- Cryptomatte: CryptoObject, CryptoMaterial and CryptoAsset mattes with
+  preview layers, written as their own EXR or merged into the multilayer EXR.
+- APImageIO_LoadImage: a command for loading image files from macros,
+  LScript and Python (LightWave has none), plus a multi-select
+  "APImageIO Load Images..." menu entry.
+- An APImageIO page in Preferences.
+- Errors from loading and saving are shown on Layout's message line.
+
+Changes since the last internal build
+-------------------------------------
+- Cryptomatte: names now always match the current scene (objects added or
+  renamed after the filter was added used to be missed on the first render);
+  CryptoAsset now groups loaded objects by their hierarchy; lossy EXR
+  compression can no longer corrupt the IDs.
+- Multilayer EXR: depth, IDs and positions are no longer rounded when half
+  float is on; failed writes are reported instead of silently skipped.
+- OpenEXR loader: picks the beauty layer (Blender "Combined") over other
+  passes; loads luminance-only and single-channel files; honours the display
+  window; no longer leaks memory on damaged files.
+- AVIF / WebP savers report a full disk or lost network path instead of
+  leaving a truncated file.
+- SVG keeps its aspect ratio when a very large document is scaled down.
+
+What we'd most like you to test
+-------------------------------
+- EXRs from your own pipeline: Blender, Nuke, Houdini, Arnold/RenderMan,
+  especially multilayer, cropped and DWAA files.
+- Cryptomatte in your compositor: does picking select the right objects and
+  materials, with clean antialiased edges and motion blur?
+- Multilayer EXR output on long F10 sequences and network renders.
+- Saving WebP / AVIF / EXR / TIFF / DPX from F9 and F10 renders.
+- Krita: texture from a .kra, edit it in Krita, save, reload in LightWave.
+- Camera RAW from your camera model.
+- Anything in a folder with non-English characters in its name.
+
+Known limitations
+-----------------
+See README.txt.

@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <ProjectGuid>{A1B2C3D4-E5F6-47A8-9B0C-1D2E3F4A5B6C}</ProjectGuid>
+    <RootNamespace>APImageIO</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <!-- vcpkg static install (OpenEXR + libwebp). -->
+    <VcpkgDir>C:\vcpkg\installed\x64-windows-static</VcpkgDir>
+    <LWSdkDir>C:\Lightwave_SDK\include</LWSdkDir>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+
+  <PropertyGroup Label="UserMacros" />
+
+  <PropertyGroup>
+    <OutDir>$(ProjectDir)bin\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)obj\$(Configuration)\</IntDir>
+    <TargetName>APImageIO</TargetName>
+    <TargetExt>.p</TargetExt>
+  </PropertyGroup>
+
+  <!-- Common compile/link settings (both configs). -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <ConformanceMode>false</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PreprocessorDefinitions>WIN32;_MSWIN;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(LWSdkDir);$(VcpkgDir)\include;$(VcpkgDir)\include\OpenEXR;$(VcpkgDir)\include\Imath;$(ProjectDir)..\ap_shared\apprefs;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <!-- OIIO's bundled fmt requires /utf-8. -->
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(VcpkgDir)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>OpenEXR-3_4.lib;OpenEXRCore-3_4.lib;Imath-3_2.lib;Iex-3_4.lib;IlmThread-3_4.lib;deflatestatic.lib;openjph.0.28.lib;libwebp.lib;libsharpyuv.lib;avif.lib;dav1d.lib;aom.lib;yuv.lib;lunasvg.lib;plutovg.lib;lodepng-c.lib;OpenImageIO.lib;OpenImageIO_Util.lib;libpng16.lib;openjp2.lib;raw_r.lib;jasper.lib;jpeg.lib;lcms2.lib;tiff.lib;zs.lib;zstd.lib;lzma.lib;bz2.lib;OpenColorIO.lib;libexpatMT.lib;pystring.lib;yaml-cpp.lib;minizip-ng.lib;bcrypt.lib;ncrypt.lib;crypt32.lib;psapi.lib;legacy_stdio_definitions.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemGroup>
+    <ClCompile Include="src\apimageio_module.c" />
+    <ClCompile Include="src\ap_prefs.c" />
+    <ClCompile Include="src\ap_report.c" />
+    <ClCompile Include="src\load_image_cmd.c" />
+    <ClCompile Include="..\ap_shared\apprefs\apprefs.c" />
+    <ClCompile Include="src\exr_loader.c" />
+    <ClCompile Include="src\exrbridge.cpp" />
+    <ClCompile Include="src\webp_loader.c" />
+    <ClCompile Include="src\webp_saver.c" />
+    <ClCompile Include="src\webpbridge.c" />
+    <ClCompile Include="src\avif_loader.c" />
+    <ClCompile Include="src\avif_saver.c" />
+    <ClCompile Include="src\avifbridge.c" />
+    <ClCompile Include="src\svg_loader.c" />
+    <ClCompile Include="src\svgbridge.cpp" />
+    <ClCompile Include="src\png_loader.c" />
+    <ClCompile Include="src\pngbridge.c" />
+    <ClCompile Include="src\kra_loader.c" />
+    <ClCompile Include="src\krabridge.c" />
+    <ClCompile Include="src\oiio_loader.c" />
+    <ClCompile Include="src\oiio_saver.c" />
+    <ClCompile Include="src\oiiobridge.cpp" />
+    <ClCompile Include="src\exr_session.c" />
+    <ClCompile Include="src\exr_multilayer.c" />
+    <ClCompile Include="src\crypto_encode.c" />
+    <ClCompile Include="src\crypto_accum.c" />
+    <ClCompile Include="src\crypto_matte.c" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ClInclude Include="src\exrbridge.h" />
+    <ClInclude Include="src\webpbridge.h" />
+    <ClInclude Include="src\avifbridge.h" />
+    <ClInclude Include="src\svgbridge.h" />
+    <ClInclude Include="src\pngbridge.h" />
+    <ClInclude Include="src\krabridge.h" />
+    <ClInclude Include="src\oiiobridge.h" />
+    <ClInclude Include="src\ap_prefs.h" />
+    <ClInclude Include="src\ap_report.h" />
+    <ClInclude Include="src\apimageio_version.h" />
+    <ClInclude Include="..\ap_shared\apprefs\apprefs.h" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>
