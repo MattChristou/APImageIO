@@ -5,6 +5,7 @@ All notable changes to APImageIO are recorded here.
 ## [Unreleased]
 
 ### Added
+- **Update checker record.** The plugin exports `lwf_plugin_info()` (`lwf_version.h`) with its catalogue id `APImageIO` and version `0.4.0-beta.1`, also readable from the file without loading it. The macOS build exports it too and fails if it is missing.
 - **macOS build (in progress, `mac-port` branch).** `build_mac.sh` makes a universal
   (arm64 + x86_64) `APImageIO.plugin` against static vcpkg dependencies pinned to the
   same baseline as the Windows build (`mac/vcpkg.json`, `mac/triplets/`, macOS 11+).

@@ -75,7 +75,7 @@ build_arch() {
     clang++ -arch "$arch" $MIN -bundle -o "$obj/$NAME" $objs "$inst"/lib/*.a \
         -framework CoreFoundation -framework CoreServices -framework Security \
         -liconv -lz -lcompression \
-        -Wl,-exported_symbol,__mod_descrip -Wl,-dead_strip
+        -Wl,-exported_symbol,__mod_descrip -Wl,-exported_symbol,_lwf_plugin_info -Wl,-dead_strip
 }
 
 rm -rf "$BUNDLE"
@@ -95,6 +95,8 @@ echo "== Checks"
 lipo -info "$BUNDLE/Contents/MacOS/$NAME"
 nm -gU "$BUNDLE/Contents/MacOS/$NAME" | grep -q " __mod_descrip$" \
     || { echo "ERROR: _mod_descrip is not exported"; exit 1; }
+nm -gU "$BUNDLE/Contents/MacOS/$NAME" | grep -q " _lwf_plugin_info$" \
+    || { echo "ERROR: lwf_plugin_info is not exported (lwf_version.h)"; exit 1; }
 echo "exported:"; nm -gU "$BUNDLE/Contents/MacOS/$NAME"
 echo "dylibs:";   otool -L "$BUNDLE/Contents/MacOS/$NAME"
 codesign --verify --verbose "$BUNDLE"

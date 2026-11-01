@@ -14,6 +14,8 @@
 #include <lwimageio.h>
 #include <lwgeneric.h>
 #include <lwfilter.h>
+#include "apimageio_version.h"
+#include "lwf_version.h"
 
 /* Server activations. */
 extern int ExrLoader(int, GlobalFunc *, void *, void *);          /* exr_loader.c */
@@ -230,6 +232,9 @@ static ServerTagInfo ApLoadImageTags[] = {
     { "Utilities/APImageIO Load Images...", SRVTAG_MENU | LANGID_USENGLISH },
     { NULL, 0 }
 };
+
+/* This .p's id and version, for the update checker (lwf_version.h). */
+LWF_PLUGIN_INFO("APImageIO", APIMAGEIO_VERSION);
 
 static ServerRecord ServerDesc[] = {
     { LWIMAGELOADER_CLASS, "AP_OpenEXRLoader",          (ActivateFunc *)ExrLoader,         ExrLoaderTags },
